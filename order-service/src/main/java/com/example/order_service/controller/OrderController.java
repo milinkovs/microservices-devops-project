@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.LocalDateTime;
 
@@ -16,12 +17,15 @@ import java.time.LocalDateTime;
 @RequestMapping("/api/orders")
 @Slf4j
 public class OrderController {
-    private final RestTemplate restTemplate;
+
+//    private final RestTemplate restTemplate;
     private final RabbitTemplate rabbitTemplate; // Za Message Queue
     private final OrderRepository orderRepository;
+    private final WebClient.Builder webClientBuilder;
 
-    public OrderController(RestTemplate restTemplate, RabbitTemplate rabbitTemplate, OrderRepository orderRepository) {
-        this.restTemplate = restTemplate;
+    public OrderController(RabbitTemplate rabbitTemplate, OrderRepository orderRepository,
+                                                          WebClient.Builder webClientBuilder) {
+        this.webClientBuilder = webClientBuilder;
         this.rabbitTemplate = rabbitTemplate;
         this.orderRepository = orderRepository;
     }
@@ -30,26 +34,47 @@ public class OrderController {
     public String placeOrder(@RequestParam Long userId, @RequestParam Long productId) {
         log.info("Primljen zahtev za novu narudžbinu. User: {}, Product: {}", userId, productId);
 
-        // 1. REST poziv ka user-service
-        Object user = restTemplate.getForObject("http://localhost:8081/api/users/" + userId, Object.class);
+        // 1. Reaktivni poziv ka user-service (Port 8081)
+        Boolean userExists = webClientBuilder.build()
+                .get()
+                .uri("http://localhost:8081/api/users/" + userId)
+                .retrieve()
+                .bodyToMono(Object.class)
+                .map(obj -> true)
+                .onErrorReturn(false)
+                .block(); // block() koristimo da sačekamo odgovor pre nego što krenemo dalje
 
-        // 2. REST poziv ka product-service
-        Object product = restTemplate.getForObject("http://localhost:8082/api/products/" + productId, Object.class);
+        log.info("Provera korisnika završena. Postoji: {}", userExists);
 
-        if (user != null && product != null) {
+        // 2. Reaktivni poziv ka product-service (Port 8082)
+        Boolean productExists = webClientBuilder.build()
+                .get()
+                .uri("http://localhost:8082/api/products/" + productId)
+                .retrieve()
+                .bodyToMono(Object.class)
+                .map(obj -> true)
+                .onErrorReturn(false)
+                .block();
+
+        log.info("Provera proizvoda završena. Postoji: {}", productExists);
+
+        if (Boolean.TRUE.equals(userExists) && Boolean.TRUE.equals(productExists)) {
 
             Order order = new Order();
             order.setUserId(userId);
             order.setProductId(productId);
             order.setOrderDate(LocalDateTime.now());
             orderRepository.save(order);
+            log.info("Narudžbina uspešno sačuvana u bazu podataka.");
 
             // 3. Slanje poruke na RabbitMQ
-            String message = "Narudžbina uspešna za korisnika " + userId;
+            String message = "Narudžbina uspešna za korisnika " + userId + " i proizvod " + productId;
             rabbitTemplate.convertAndSend("notificationExchange", "notificationRoutingKey", message);
             log.info("Poruka poslata na Message Queue: {}", message);
-            return "Order placed successfully!";
+
+            return "Order placed and saved successfully!";
         }
-        return "Failed to place order.";
+        log.error("Narudžbina nije uspela. Korisnik ili proizvod ne postoje.");
+        return "Failed to place order. User or Product not found";
     }
 }
