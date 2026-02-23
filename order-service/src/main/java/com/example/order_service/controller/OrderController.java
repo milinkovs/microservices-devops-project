@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.LocalDateTime;
@@ -22,6 +23,12 @@ public class OrderController {
     private final RabbitTemplate rabbitTemplate; // Za Message Queue
     private final OrderRepository orderRepository;
     private final WebClient.Builder webClientBuilder;
+
+    @Value("${USER_SERVICE_URL:http://localhost:8081}")
+    private String userServiceUrl;
+
+    @Value("${PRODUCT_SERVICE_URL:http://localhost:8082}")
+    private String productServiceUrl;
 
     public OrderController(RabbitTemplate rabbitTemplate, OrderRepository orderRepository,
                                                           WebClient.Builder webClientBuilder) {
@@ -37,7 +44,7 @@ public class OrderController {
         // 1. Reaktivni poziv ka user-service (Port 8081)
         Boolean userExists = webClientBuilder.build()
                 .get()
-                .uri("http://localhost:8081/api/users/" + userId)
+                .uri(userServiceUrl+ "/api/users/" + userId)
                 .retrieve()
                 .bodyToMono(Object.class)
                 .map(obj -> true)
@@ -49,7 +56,7 @@ public class OrderController {
         // 2. Reaktivni poziv ka product-service (Port 8082)
         Boolean productExists = webClientBuilder.build()
                 .get()
-                .uri("http://localhost:8082/api/products/" + productId)
+                .uri(productServiceUrl+ "/api/products/" + productId)
                 .retrieve()
                 .bodyToMono(Object.class)
                 .map(obj -> true)

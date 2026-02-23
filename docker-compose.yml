@@ -1,0 +1,114 @@
+version: '3.8'
+
+services:
+  # Infrastruktura
+  user-db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: user_db
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+
+  product-db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: product_db
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+
+  order-db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: order_db
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5435:5432"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  # Mikroservisi
+  user-service:
+    build: ./user-service
+    ports:
+      - "8081:8081"
+    environment:
+      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+      DB_HOST: user-db
+      DB_PASSWORD: postgres
+    depends_on:
+      - user-db
+
+  product-service:
+    build: ./product-service
+    ports:
+      - "8082:8082"
+    environment:
+      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+      DB_HOST: product-db
+      DB_PASSWORD: postgres
+    depends_on:
+      - product-db
+
+  order-service:
+    build: ./order-service
+    ports:
+      - "8083:8083"
+    environment:
+      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+      DB_HOST: order-db
+      DB_PASSWORD: postgres
+      USER_SERVICE_URL: http://user-service:8081
+      PRODUCT_SERVICE_URL: http://product-service:8082
+      RABBIT_HOST: rabbitmq
+    depends_on:
+      - order-db
+      - rabbitmq
+
+  notification-service:
+    build: ./notification-service
+    ports:
+      - "8084:8084"
+    environment:
+      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+      RABBIT_HOST: rabbitmq
+    depends_on:
+      - rabbitmq
+
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+      USER_SERVICE_URL: http://user-service:8081
+      PRODUCT_SERVICE_URL: http://product-service:8082
+      ORDER_SERVICE_URL: http://order-service:8083
+      NOTIFICATION_SERVICE_URL: http://notification-service:8084
+
+
+  zipkin:
+      image: openzipkin/zipkin
+      ports:
+        - "9411:9411"
+
+
+  prometheus:
+      image: prom/prometheus
+      ports:
+        - "9090:9090"
+      volumes:
+        - ./prometheus.yml:/etc/prometheus/prometheus.yml
+
+
+  grafana:
+      image: grafana/grafana
+      ports:
+        - "3000:3000"
+      depends_on:
+        - prometheus
