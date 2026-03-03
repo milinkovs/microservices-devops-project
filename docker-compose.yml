@@ -63,9 +63,9 @@ services:
       MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
       DB_HOST: order-db
       DB_PASSWORD: postgres
+      RABBIT_HOST: rabbitmq
       USER_SERVICE_URL: http://user-service:8081
       PRODUCT_SERVICE_URL: http://product-service:8082
-      RABBIT_HOST: rabbitmq
     depends_on:
       - order-db
       - rabbitmq
