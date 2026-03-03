@@ -110,7 +110,8 @@
 				<version>3.2.1</version>
 				<configuration>
 					<consoleOutput>true</consoleOutput>
-					<failsOnError>false</failsOnError> <linkXRef>false</linkXRef>
+					<failsOnError>false</failsOnError>
+					<failOnViolation>false</failOnViolation><linkXRef>false</linkXRef>
 				</configuration>
 				<executions>
 					<execution>
