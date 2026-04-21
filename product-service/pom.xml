@@ -77,6 +77,12 @@
 			<groupId>io.micrometer</groupId>
 			<artifactId>micrometer-observation</artifactId>
 		</dependency>
+
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -104,6 +110,25 @@
 						</exclude>
 					</excludes>
 				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-checkstyle-plugin</artifactId>
+				<version>3.2.1</version>
+				<configuration>
+					<consoleOutput>true</consoleOutput>
+					<failsOnError>false</failsOnError>
+					<failOnViolation>false</failOnViolation><linkXRef>false</linkXRef>
+				</configuration>
+				<executions>
+					<execution>
+						<id>validate</id>
+						<phase>validate</phase>
+						<goals>
+							<goal>checkstyle</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>

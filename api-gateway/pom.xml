@@ -70,6 +70,25 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-checkstyle-plugin</artifactId>
+				<version>3.2.1</version>
+				<configuration>
+					<consoleOutput>true</consoleOutput>
+					<failsOnError>false</failsOnError>
+					<failOnViolation>false</failOnViolation><linkXRef>false</linkXRef>
+				</configuration>
+				<executions>
+					<execution>
+						<id>validate</id>
+						<phase>validate</phase>
+						<goals>
+							<goal>checkstyle</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
 		</plugins>
 	</build>
 </project>
